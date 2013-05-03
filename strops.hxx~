@@ -1,0 +1,43 @@
+// strops.hxx   string opration class head
+#ifndef STROPS_H_
+#define STROPS_H_
+
+#include<iostream>
+#include<string>
+#include<vector>
+#include<sstream>
+#include<set>
+
+using namespace std;
+
+class strops
+{
+private:
+
+  vector<string> strVec;
+  bool           formatTag;
+
+public:
+  strops();
+  strops(string str);
+  ~strops();
+
+
+  bool           debug();
+  vector<string> content2vector(string content);
+  void           print_vector(vector<string> tmpVec);
+  string         delete_content_space(string content);
+  int            find_match_pos(string content, char pattern, int pos);
+  bool           check_format(){return this->formatTag;};
+  vector<string> get_vector(){return this->strVec;};
+  void           setcolor(string color = "default");
+  string         check_repeat(vector<string> inVec);
+ 
+  string         default_color;
+  string         errormsg_color;
+  string         folder_color;
+  string         program_color;
+  string         mark_color;  
+};
+
+#endif

@@ -1,0 +1,38 @@
+//command.hxx
+// this class use to interactive to users
+#ifndef COMMAND_H_
+#define COMMAND_H_
+
+#include<iostream>
+#include<string>
+#include<vector>
+#include<set>
+#include<cctype>
+#include"JSONList.hxx"
+#include"strops.hxx"
+
+using namespace std;
+
+class command
+{
+private:
+  set<string>      cmdset;
+  string           name;
+  JSONList         jlist;
+  vector< string > cmd_vec;
+  strops           *pstrops;
+
+public:
+  command();
+  command(string const);
+  ~command();
+
+  vector< string >  string2word(string const);
+  bool              run();
+  bool              save();
+  void              show_help_message();
+  bool              run_command(string cmd);      // run the specific command
+};
+
+
+#endif

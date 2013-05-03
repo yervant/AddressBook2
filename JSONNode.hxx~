@@ -1,0 +1,47 @@
+// JSONNode.hxx head 
+#ifndef JSONNODE_H_
+#define JSONNODE_H_
+
+#include<iostream>
+#include<set>
+#include<map>
+#include<string>
+
+using namespace std;
+
+class JSONNode
+{
+public:
+  JSONNode();
+  JSONNode(string const);
+
+  ~JSONNode();
+  string key;
+
+  union  valueType
+  {
+    int     intV;
+    double  douV;
+    string  *strP;
+  };
+
+  valueType value;
+  /**
+     value_att--
+     the attribute of the value
+     can be assigned "double" "int" "string" "pointer"
+  */
+  string    value_att;   
+  
+  JSONNode *subNode;         // son node, node == null when this is an atom
+  JSONNode *parNode;         // parents  node
+  JSONNode *nextNode;
+  
+  bool assign(int    intV);
+  bool assign(double douV);
+  bool assign(string *strP);
+  
+};
+
+
+#endif

@@ -1,0 +1,644 @@
+//JSONList.cpp json linked list class
+// this class act as json linked list 
+#include "JSONList.hxx"
+
+JSONList::JSONList ()
+{
+  this->root           = new JSONNode("root");
+  this->pstrops        = new strops();
+  this->cur            = NULL;
+}
+
+JSONList::~JSONList ()
+{
+  this->removesub(this->root->subNode);
+  delete this->root;
+  delete this->pstrops;
+}
+
+void JSONList::initial (string content)
+{
+  this->add(this->root, content);
+  return;
+}
+
+/*** 
+ * list the all objects in current level(directory).
+ */
+bool JSONList::ls (JSONNode *firstNode)
+{
+  JSONNode    *tmp = firstNode;
+  if (!firstNode)  return true;
+  while (tmp)
+  {
+    if (tmp->subNode) {
+      this->pstrops->setcolor("folder");
+      cout << tmp->key <<"   ";
+      this->pstrops->setcolor();
+    } else {
+      cout << tmp->key <<"   ";
+    }
+    tmp = tmp->nextNode;
+  }
+  cout << endl;
+  return true;
+}
+
+/***
+ * change into the sub dir which 
+ * is corresponding to the key
+ */
+JSONNode* JSONList::cd (JSONNode *node, string key)
+{
+  JSONNode *tmp = node;
+  if (!node )               return  NULL;
+  if (!key.compare("/"))    return  this->root->subNode;
+  if (!key.compare("."))    return  node;           // no parameters 
+  if (!key.compare("..")                            // go to previous level
+      && node->parNode)     return node->parNode;   // when parents is non-null
+  if (!key.compare("..") && !node->parNode) {       // when the cur is root
+    cout << "now is the root!" << endl;             
+    return node;
+  }
+  while (tmp)
+  {
+    if ((!key.compare(tmp->key)) && tmp->subNode) {
+      this->cur = tmp->subNode;
+      return tmp->subNode;
+    } else if ((!key.compare(tmp->key)) && (!tmp->subNode)) {
+      this->pstrops->setcolor("error");
+      cout << "'" << key 
+	   << "' is an atom object, cannot use 'cd' command!" 
+	   << endl;
+      this->pstrops->setcolor();
+      return node;
+    }
+    tmp = tmp->nextNode;
+  }
+  this->pstrops->setcolor("error");
+  cout << "No key ";
+  this->pstrops->setcolor("mark");
+  cout << key;
+  this->pstrops->setcolor("error");
+  cout << " found!" << endl;
+  this->pstrops->setcolor();
+  return node;
+}
+
+/*** 
+ *  shows the content of key in the current level(directory).
+ */
+bool JSONList::cat (JSONNode *firstNode, string key)
+{
+  JSONNode      *tmp    = firstNode;
+  string        content = "";
+  string        tmpstr;
+  if (!firstNode)    return false;
+  if (!key.compare("/")) {                       // show all tree contents
+      content = sub_content(this->root->subNode);
+      cout<< "\"" << "/" << "\""
+	  << ":{" << content << "}"<< endl;
+      return true;
+  }
+  if (!key.compare(".")) {                     // show the current dir cont.s
+    content = sub_content(firstNode);
+    cout << content << endl;
+    return true;
+  }
+  while (tmp)
+  { 
+    if (!key.compare(tmp->key)) { 
+      if (tmp->subNode) {
+	// when the current has sub node
+	content = sub_content(tmp->subNode);
+	cout<< "\"" << tmp->key << "\""
+	    << ":{" << content  << "}"<< endl;
+	return true;
+      } else if ((!tmp->subNode) 
+		 && (!tmp->value_att.compare("int"))) {
+	// the cuurent has no sub node and its attribute is "int"
+	cout<< "\"" << tmp->key << "\""
+	    << ":" << this->to_string(tmp->value.intV) << endl;
+	return true;
+      } else if ((!tmp->subNode)	
+		 && (!tmp->value_att.compare("double"))) {
+	cout<< "\"" << tmp->key << "\""
+	    << ":" << this->to_string(tmp->value.douV) << endl;
+	return true;
+      } else if ((!tmp->subNode)	
+		 && (!tmp->value_att.compare("string"))) {
+	cout<< "\"" << tmp->key << "\""
+	    << ":\"" << *tmp->value.strP << "\"" << endl;
+	return true;
+      } else {
+	cout << "\"" << tmp->key << "\":{null}" << endl;
+	return true;
+      }
+    } else {
+      tmp = tmp->nextNode;
+    }
+  }
+  this->pstrops->setcolor("error");
+  cout << "No key '" << key << "' found!" << endl;
+  this->pstrops->setcolor();
+  return true;
+}
+
+/***
+ * this func. returns the sub dir content of the node
+ * this func. only called by the func. bool cat(JSONNode *node, string key)
+ */
+string JSONList::sub_content (JSONNode *subFirstNode)
+{
+  JSONNode *tmp = subFirstNode;
+  string    rs  = "";
+  if (!subFirstNode)    return rs;
+  while (tmp)
+  {  
+    if (tmp->subNode) {
+      rs += "\"" + tmp->key + "\"";
+      rs += ":{" + this->sub_content(tmp->subNode) + "}";
+    } else if ((!tmp->subNode) 
+	       && (!tmp->value_att.compare("int"))) {
+      rs += "\"" + tmp->key + "\"";
+      rs += ":" + this->to_string(tmp->value.intV);
+    } else if ((!tmp->subNode) 
+	       && (!tmp->value_att.compare("double"))) {
+      rs += "\"" + tmp->key + "\"";
+      rs += ":" + this->to_string(tmp->value.douV);
+    } else if ((!tmp->subNode) 
+	       && (!tmp->value_att.compare("string"))) {
+      rs += "\"" + tmp->key + "\"";
+      rs += ":\"" + *tmp->value.strP + "\"";
+    } else {
+      rs += "\"" + tmp->key + "\"";
+      rs += ":{null}";
+    }
+    if (tmp->nextNode)   rs += ", ";
+    tmp = tmp->nextNode;
+  }
+  return rs;
+}
+
+/***
+ * add node into the current level last node's nextNode 
+ * position in current level, firstNode means
+ * the firest node in current level, and the 
+ * the content's format as:
+ * "key1":"value1","key2":"value2"    or
+ * "key3":{"key31":"value31","key32":"value32"},"key4":"vaule4"
+ */
+bool JSONList::add (JSONNode *firstNode, string content)
+{
+  vector<string>  strVec;
+  JSONNode        *tmp     = firstNode;
+  JSONNode        *keypar;
+  string          checkStr;
+  strVec   = this->pstrops->content2vector(content);
+  if (0 == strVec.size()) {return false;}
+  if (!this->pstrops->check_format()){
+    cout<<"JSONList::add format error!"<<endl;
+   return false;
+  }
+  // cout << "in func. add()" << endl;
+  // pstrops->print_vector(strVec);
+
+  checkStr = this->pstrops->check_repeat(strVec);
+
+  if (checkStr.size() > 0)
+  {
+    cout << "the input string exists repeated key words:";
+    this->pstrops->setcolor("mark");
+    cout << checkStr;
+    this->pstrops->setcolor();
+    cout << "\"add\" command failure!";
+    cout << endl;
+    return false;
+  }
+  for (int i = 0; i < strVec.size() - 1; i += 2)
+  {
+    string key(strVec[i].substr(0, strVec[i].size()));
+    string key_without_sem(strVec[i].substr(1, strVec[i].size()-2));
+    string value(strVec[i+1].substr(0, strVec[i+1].size()));
+    if (addone(firstNode,key,value)) {
+      this->pstrops->setcolor("mark");
+      cout << key_without_sem;
+      this->pstrops->setcolor();
+      cout << " entry added!" << endl;
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
+
+/***
+ * add one item into the current list's last node 
+ */
+bool JSONList::addone (JSONNode *firstNode, string key, string content)
+{
+  JSONNode *tmp    = firstNode;
+  JSONNode *keypar = firstNode;
+  string   key_without_sem(key.substr(1, key.size() -2 ));
+  string   value_without_sem(content.substr(1, content.size() - 2));
+  vector<string>   tmpVec;
+  tmpVec = pstrops->cmdstring2word(key_without_sem);
+  if (tmpVec.size() > 1) {
+    pstrops->setcolor("error");
+    cout << "format error, key string without space." << endl;
+    pstrops->setcolor();
+    return false;
+  }
+  key_without_sem = pstrops->delete_all_space(key_without_sem);
+  keypar           = this->findkey(firstNode, key_without_sem);
+
+  if (keypar) {
+    this->pstrops->setcolor("error");
+    cout << "The key '" ;
+    this->pstrops->setcolor("mark");
+    cout << key_without_sem;
+    this->pstrops->setcolor("error");
+    cout  << "' exists in this dir! You cannot add it" << endl;
+    this->pstrops->setcolor();
+    return false;
+  }
+
+  if(!firstNode)
+  {
+    firstNode = this->root;
+    tmp = firstNode;
+  }
+  if (!firstNode->key.compare("root") // for initial
+      && !firstNode->nextNode 
+      && !firstNode->subNode
+      && !firstNode->parNode)
+  {
+    tmp->subNode  = new JSONNode(key_without_sem);
+    keypar        = tmp;
+    tmp->parNode  = keypar;
+    this->cur     = tmp->subNode;
+
+    if (content[0] == '{' && content[content.size()-1] == '}') {
+      if (!addsub(tmp, tmp, value_without_sem)) {
+	this->cur = NULL;
+	delete tmp;
+	this->root = NULL;
+	return true;
+      }
+    } else if (content[0] == '"' && content[content.size()-1] == '"') {
+      // tmp points to the last node in current level
+      while (tmp->nextNode)     tmp = tmp->nextNode;
+      tmp->assign(new string(value_without_sem));
+      tmp->subNode = NULL;
+      return true;
+    } else {
+      return false;
+    }
+  } else {
+    if (content[0] == '{' && content[content.size()-1] == '}') {
+      if (!addsub(firstNode, tmp, value_without_sem)) {
+	return false;
+      }
+    } else if (content[0] == '"' && content[content.size()-1] == '"') {
+      // tmp points to the last node in current level
+      while (tmp->nextNode)     tmp = tmp->nextNode;
+      tmp->nextNode = new JSONNode(key_without_sem);
+      keypar        = tmp;
+      tmp           = tmp->nextNode;
+      tmp->parNode  = keypar;
+
+      tmp->assign(new string(value_without_sem));
+      tmp->subNode = NULL;
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
+/***
+ * add a node to the current list's last node
+ */
+bool JSONList::addsub (JSONNode *preLevel, JSONNode *curNode, string content)
+{
+  vector<string>  strVec;
+  JSONNode        *tmp    = curNode;
+  JSONNode        *tmppar = curNode;
+  JSONNode        *firstNode;        // this level fisrt node
+  strVec = this->pstrops->content2vector(content);
+  if (!this->pstrops->check_format())    return false;
+  // cout << "in fun addsub() :" << strVec.size() << endl;
+  // pstrops->print_vector(strVec);
+  for (int i = 0; i < strVec.size() - 1; i += 2)
+  {
+    string key_without_sem(strVec[i].substr(1, strVec[i].size() - 2 ));
+    string value_without_sem(strVec[i+1].substr(1, strVec[i+1].size() - 2));
+    if (0 == i) {    // the first node
+      tmp->subNode  = new JSONNode(key_without_sem);
+      tmp           = tmp->subNode;
+      tmp->parNode  = preLevel;
+      firstNode     = tmp;
+    } else {
+      tmp->nextNode = new JSONNode(key_without_sem);
+      tmppar        = tmp;
+      tmp           = tmp->nextNode;
+      tmp->parNode  = tmppar;
+    }
+    if (strVec[i+1][0] == '"') {
+      tmp->assign(new string(value_without_sem));
+    } else if (strVec[i+1][0] == '{') {
+      if (!addsub(firstNode, tmp, value_without_sem)) return false;
+    } else {
+      return false;
+    }
+  }
+}
+
+/***
+ * remove a node by key from the current level
+ */
+bool JSONList::remove (JSONNode *firstNode, string key)
+{
+  JSONNode *deleteNode;
+  JSONNode *keypar;       // point to the key's previous node
+  keypar = this->findkey(firstNode, key);
+  if (!keypar) {          // not find the key node
+    this->pstrops->setcolor("error");
+    cout << "No key ";
+    this->pstrops->setcolor("mark");
+    cout << key;
+    this->pstrops->setcolor("error");
+    cout << " found in this level (directory)!" << endl;
+    this->pstrops->setcolor();
+    return true;
+  } 
+  if (keypar->nextNode)
+    deleteNode = keypar->nextNode;
+  if (!firstNode->key.compare(key) 
+      && removesub(firstNode->subNode)) {              // delete key is first key
+    this->remove_first_node(firstNode);
+  }else if (firstNode->key.compare(key) 
+	    && removesub(deleteNode->subNode)) {  // delete key is middle key
+    keypar->nextNode = deleteNode->nextNode;
+    if (deleteNode->nextNode)
+      deleteNode->nextNode->parNode = keypar;
+    delete deleteNode;
+  } else {
+    cout << "An error happens when delete " << key << endl; 
+    return false;
+  }
+  this->pstrops->setcolor("mark");
+  cout << key;
+  this->pstrops->setcolor();
+  cout << " was deleted from JSON." << endl;
+  return true;
+}
+
+/***
+ * remove the first node in the current level
+ */
+bool JSONList::remove_first_node (JSONNode *firstNode)
+{
+  JSONNode *tmp;
+  if ((!firstNode->parNode) && (!firstNode->nextNode)) {
+    this->root->subNode = NULL;    
+    this->cur           = NULL;
+    delete firstNode;
+    return true;
+  }else if ((!firstNode->parNode) && (firstNode->nextNode)) {
+    tmp          = this->root;
+    tmp->subNode = firstNode->nextNode;
+    tmp          = tmp->subNode;
+    tmp->parNode = NULL;
+    this->cur    = firstNode->nextNode;
+    delete firstNode;
+    while (tmp)
+    {
+      if (tmp->subNode) {
+	tmp->subNode->parNode = this->root->subNode;
+      }
+      tmp = tmp->nextNode;
+    }
+    return true;
+  }else if (firstNode->parNode && (!firstNode->nextNode)) {
+    tmp          = firstNode->parNode;
+    tmp->subNode = NULL;
+    this->cur    = tmp;
+    delete firstNode;
+    return true;
+  }else if (firstNode->parNode && (firstNode->nextNode)) {
+    tmp          = firstNode->parNode;
+    tmp->subNode = firstNode->nextNode;
+    tmp          = tmp->subNode;
+    tmp->parNode = firstNode->parNode;
+    this->cur    = firstNode->nextNode;
+    while (tmp)
+    {
+      if (tmp->subNode) {
+	tmp->subNode->parNode = firstNode->nextNode;
+      }
+      tmp = tmp->nextNode;
+    }
+    delete firstNode;
+    return true;
+  }
+}
+
+/***
+ * remove the sub dir when the sub is non-null
+ * this func. only can be called by remove
+ * here we use recursive method.
+ */
+bool JSONList::removesub(JSONNode *subnode)
+{ 
+  JSONNode    *tmp    = subnode;
+  JSONNode    *tmppar = subnode;
+  if (!tmp)   return  true;
+  while(tmp)
+  {
+    if (!tmp->subNode)
+      return this->removesub(tmp->subNode);
+    tmp->parNode = tmppar;    
+    tmppar       = tmp;
+    tmp          = tmp->nextNode;
+  }
+  tmp            = tmppar;
+  while (tmp != subnode)
+  {
+    tmppar       = tmp->parNode;
+    delete tmp;
+    tmp          = tmppar;
+  }
+  delete tmp;              // delete subnode
+  return true;
+}
+
+/***
+ * find the key position in current dir.
+ * return the previous node if we find it
+ * return NULL if we donnot find the key
+ */
+JSONNode* JSONList::findkey (JSONNode *firstNode, string key)
+{
+  JSONNode *tmp;
+  if (!firstNode)   return NULL;
+  if (!firstNode->key.compare(key))
+    return firstNode;
+  tmp = firstNode->nextNode;
+  while (tmp)
+  {
+    if (!tmp->key.compare(key))
+      return tmp->parNode;
+    tmp = tmp->nextNode;
+  }
+  return   NULL;
+}
+
+/***
+ * get the value of the node
+ */
+string JSONList::get_pointer_value(JSONNode *node)
+{
+  string rs="";
+  if (!node) {
+    rs = "NULL";
+  } else {
+    rs = node->key;
+  }
+  return rs;
+}
+
+/***
+ * debug only used for debug...
+ */
+bool JSONList::debug (JSONNode *firstNode, string key)
+{
+  JSONNode *tmp = firstNode;
+  if (!firstNode)   return true;
+  cout<< " $" << get_pointer_value(firstNode) << "$" << endl;
+  while (tmp)
+  {
+    this->pstrops->setcolor("mark");
+    if (!tmp->key.compare(key)) {
+      cout<< " #"  << get_pointer_value(tmp->parNode) << "#" 
+	  << " \"" << key << "\""
+	  << " #"  << get_pointer_value(tmp->subNode) << "#"
+	  << " ||" << get_pointer_value(tmp->nextNode) <<"||"
+	  << endl;
+      this->pstrops->setcolor();
+      return true;
+    } else {
+      tmp = tmp->nextNode;
+    }
+  }
+  return true;
+}
+
+/***
+ * update all node's parNode value with par in dir
+ * this func be called in remove func when we 
+ * want to remove the fisrt node in a specific level.
+ */
+bool JSONList::update_parNode_value (JSONNode* firstNode, JSONNode *par)
+{
+  JSONNode *tmp = firstNode;
+  JSONNode *tmppar;
+  if (!firstNode)  return true;
+  firstNode->parNode = par;
+  if (tmp->subNode 
+      && !this->update_parNode_value(tmp->subNode, firstNode))
+    return false;
+  tmppar = firstNode;
+  tmp = firstNode->nextNode;
+  while (tmp)
+  {
+    if (tmp->subNode 
+	&& !this->update_parNode_value(tmp->subNode, firstNode))
+      return false;
+    tmp->parNode = tmppar;
+    tmppar       = tmp;
+    tmp          = tmp->nextNode;
+  }
+  return true;
+}
+
+/***
+ * convert a number to string
+ */
+template <typename T>
+string JSONList::to_string (T const& number)
+{
+  string rs = static_cast<ostringstream*>( &(ostringstream() << number) )->str();
+  return rs;
+}
+
+/***
+ * get all current content.
+ */
+string JSONList::get_allcontent ()
+{
+  string all_content="";
+  if (this->root->subNode)
+    all_content = sub_content(this->root->subNode);
+  return all_content;
+}
+
+/*** 
+  * a toy example in given refs.
+  */
+void JSONList::toy ()
+{ 
+  JSONNode * tmp;
+  JSONNode * tmppar;   // tmp's previse level
+  this->root->subNode  = new JSONNode("entries");
+  this->cur            = this->root->subNode;
+  tmp                  = this->root->subNode;
+  tmp->parNode         = this->root->subNode;
+  tmp->nextNode        = new JSONNode("city");
+  tmp->nextNode->assign(new string("shanghai"));
+  tmp                  = tmp->nextNode;
+  tmp->parNode         = this->root->subNode;
+  tmp->nextNode        = new JSONNode("zipcode");
+  tmp->nextNode->parNode 
+                       = this->root->subNode;
+  tmp->nextNode->assign(201203);
+  tmp = this->root->subNode;
+  tmp->subNode         = new JSONNode("lilei");
+  tmppar               = tmp;               // tmppar points to "entries"
+  tmp                  = tmp->subNode;
+  tmp->parNode         = tmppar;
+  tmppar               = tmp;
+  tmp->nextNode        = new JSONNode("hanmeimei");
+  tmp                  = tmp->nextNode;
+  tmp->parNode         = tmppar;
+  //tmp points to hanmeimei
+  tmp->subNode         = new JSONNode("age");
+  tmp                  = tmp->subNode;
+  tmp->parNode = tmppar;
+  tmp->assign(26);
+  tmp->nextNode        = new JSONNode("mobile");
+  tmp                  = tmp->nextNode;
+  tmp->parNode         = tmppar;
+  tmp->assign(new string("13700000001"));
+  tmp->nextNode        = new JSONNode("address");
+  tmp                  = tmp->nextNode;
+  tmp->parNode         = tmppar;
+  tmp->assign(new string("Earth somewhere else"));
+  tmp                  = tmp->parNode;
+  tmppar               = tmp;
+  tmp->subNode         = new JSONNode("age");
+  tmp                  = tmp->subNode;
+  tmp->parNode = tmppar;
+  tmp->assign(27);
+  tmp->nextNode        = new JSONNode("mobile");
+  tmp                  = tmp->nextNode;
+  tmp->parNode = tmppar;
+  tmp->assign(new string("13700000000"));
+  tmp->nextNode        = new JSONNode("address");
+  tmp                  = tmp->nextNode;
+  tmp->parNode = tmppar;
+  tmp->assign(new string("Earth somewhere"));
+  this->update_parNode_value(this->root->subNode, this->root);
+  if (this->root->subNode)
+    this->root->subNode->parNode = NULL;
+}
