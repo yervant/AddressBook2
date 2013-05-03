@@ -1,0 +1,218 @@
+ //strops.cpp  string opration class
+#include "strops.hxx"
+
+strops::strops()
+{
+  default_color  = "\033[0m";
+  errormsg_color = "\033[1;31m";
+  folder_color   = "\033[1;34m";
+  program_color  = "\033[1;32m";
+  mark_color     = "\033[1;36m";
+
+  formatTag = true;
+}
+
+strops::strops(string str)
+{
+  default_color  = "\033[0m";
+  errormsg_color = "\033[1;31m";
+  folder_color   = "\033[1;34m";
+  program_color  = "\033[1;32m";
+  mark_color     = "\033[1;36m";
+
+  this->strVec = this->content2vector(str);
+  if (this->strVec.size() == 0)
+    this->formatTag = false;
+  else if(this->strVec.size() == 1 && strVec[0].size() == 0) {
+    this->formatTag = false;
+  }else
+    this->formatTag = true;
+}
+
+strops::~strops()
+{}
+
+/*** 
+ * convert the content to the needed vector
+ * return empty vector if the content isn't
+ * satisfy the needed format, for exmample the content:
+ * "key3":{"key31":"value31","key32":"value32"},"key4":"vaule4"
+ * become [key, "key31":"value31","key32":"value32", key4, value4]
+ */
+vector<string> strops::content2vector(string content)
+{
+  vector<string>   rsVector;
+  vector<string>   errVector;  // it's empty
+  if (0 == content.size()){
+    return  errVector;
+    this->formatTag = false;
+  }
+
+  string nospacestr = delete_content_space(content);
+  int keybpos       = 0;     // key begin position
+  int pos           = 0;
+  bool subTag       = false;
+
+  //cout<<"2vector="<<nospacestr<<endl;
+
+  for (int i = 0; i < nospacestr.size();)
+  {
+    if(nospacestr[i] == ':'){    
+      if (nospacestr[keybpos] == ',')  
+	keybpos++;
+      
+      string key(nospacestr.substr(keybpos, i-keybpos));
+      rsVector.push_back(key);
+    
+      if ((i+1) == nospacestr.size()){ 
+	return errVector;
+	this->formatTag = false;
+      }
+
+      pos = find_match_pos(nospacestr, nospacestr[i+1], i+1);
+      if (pos == -1){
+	return errVector;
+	this->formatTag = false;
+      }
+
+      string value(nospacestr.substr(i+1, pos - i));
+      rsVector.push_back(value);
+      i = pos + 1;
+      keybpos = i;
+      continue;
+    }else{
+      i++;
+    }
+  } // end for
+  this->formatTag = true;
+  this->strVec = rsVector;
+  return  rsVector;
+}
+
+/***
+ * find the matched pattern from the pos+1 in content
+ * the pattern can be assigned '{' '"'
+ */
+int strops::find_match_pos(string content, char pattern, int pos)
+{
+  int bracket = 1;
+  if ((pos + 1) == content.size())
+    return -1;
+
+  for (int i = pos + 1; i < content.size(); ++i)
+  {
+    if ((pattern == '"') && content[i] == '"')
+      return i;
+    if ((pattern == '{') && content[i] == '}' && bracket == 1)
+      return i;
+    if ((pattern == '{') && content[i] == '}' && bracket != 1) 
+      bracket --;
+    if ((pattern == '{') && content[i] == '{') 
+      bracket ++;
+  }
+  return -1;
+}
+
+/**
+ * print the vector tmpVec content
+ */
+void strops::print_vector(vector<string> tmpVec)
+{
+  cout << "vector size=" << tmpVec.size() << endl;
+  if (tmpVec.size() == 0){
+    cout <<"this is a empty vector"<<endl;
+    return;
+  }
+  if (tmpVec.size() == 1 && tmpVec[0].size() == 0) {
+    cout <<"this is a empty vector"<<endl;
+    return;
+  }
+  for (int i = 0; i < tmpVec.size(); ++i)
+  {
+    if ( i%2 == 0)
+      cout<<"["<<(i/2+i%2)<<"] "<< tmpVec[i];
+    else
+      cout<<":"<< tmpVec[i]<<endl;
+  }
+}
+
+/***
+ * delete the useless space in content
+ */
+string strops::delete_content_space(string content)
+{
+  string         nospacestr = "";
+  bool           subTag     = false;
+  for (int i = 0; i < content.size(); ++i)
+  { 
+    if (subTag){
+      nospacestr   += content[i];
+      if (content[i] == '"') 
+	subTag      = false;
+      continue;
+    }else{
+      if (content[i] == '"') {
+	subTag      = true;
+	nospacestr += content[i];
+	continue;
+      }else if (content[i] != '"' && !isspace(content[i])) {
+	nospacestr += content[i];
+	continue;
+      }
+    }
+  }
+  return nospacestr;
+}
+
+/***
+ * only use for debug
+ */
+bool strops::debug()
+{
+  string ss = " \"key1\" : {\"key10\" :{\"key110\":110},\"key11\": \"value11\"},\"key2\":\"value2\"";
+  ss += ",\"key3\":{\"key31\":230}";
+  cout << " origin size=" << ss.size() << " ss=" << ss << endl;
+  vector<string> tmpVec = content2vector(ss);
+  print_vector(tmpVec);
+  return 0;
+}
+
+/*** 
+ * set the cout text color
+ * set "default" color if no input 
+ * the color_type can be assigned 
+ * "default", "error", "folder", "program"
+ */
+void strops::setcolor(string color_type)
+{ 
+  string color;
+  if (!color_type.compare("default"))
+    color = default_color;
+  else if (!color_type.compare("error"))
+    color = errormsg_color;
+  else if (!color_type.compare("folder"))
+    color = folder_color;
+  else if (!color_type.compare("program"))
+    color = program_color;
+  else if (!color_type.compare("mark"))
+    color = mark_color;
+  else 
+    color = default_color;
+  cout<<color;
+  return;
+}
+
+string strops::check_repeat(vector<string> inVec)
+{
+  string rs = "";
+  set<string> keyset;
+  for (int i = 0; i < inVec.size() - 1; i += 2)
+  {
+    if (keyset.count(inVec[i]) == 1) {
+      return inVec[i];
+    } else {
+      keyset.insert(inVec[i]);
+    }
+  }
+  return rs;
+}

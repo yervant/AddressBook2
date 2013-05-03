@@ -1,0 +1,1 @@
+/usr/bin/c++       CMakeFiles/json.dir/JSONNode.cpp.o CMakeFiles/json.dir/JSONList.cpp.o CMakeFiles/json.dir/command.cpp.o CMakeFiles/json.dir/helpmessage.cpp.o CMakeFiles/json.dir/main.cpp.o CMakeFiles/json.dir/strops.cpp.o  -o json -rdynamic 

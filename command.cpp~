@@ -1,0 +1,178 @@
+// command.cpp
+#include"command.hxx"
+
+command::command ()
+{
+  string defaultname("jsonshell");
+  pstrops               = new strops();
+  this->name            = defaultname;
+  string const cmdstr[] = {"ls","cd","cat","add","remove","!help","!quit","#debug"};
+  int    const cmdno    = sizeof(cmdstr)/sizeof(string *);
+  for (int i=0; i < cmdno; ++i)
+    this->cmdset.insert(cmdstr[i]);
+  this->jlist.toy(); 
+}
+
+command::command (string const name)
+{
+  string const cmdstr[] = {"ls","cd","cat","add","remove","!help","!quit","#debug"};
+  int    const cmdno    = sizeof(cmdstr)/sizeof(string *);
+  pstrops               = new strops();
+  for (int i=0; i < cmdno; ++i)
+    this->cmdset.insert(cmdstr[i]);
+  this->name = name;
+  /*** using iterator to show all commands
+  for (set<string>::iterator iter = cmdset.begin();
+       iter != cmdset.end(); ++iter)
+    cout<<*iter<<" ";
+  */
+  this->jlist.toy();
+}
+
+command::~command ()
+{
+  delete   pstrops;
+}
+
+bool command::run ()
+{ /*** the main interface program
+       between human and computer
+  */
+
+  string input_string = "";
+  string cur_cmd = "";
+  
+  while (true){
+    pstrops->setcolor("program");
+    cout<<this->name;
+    pstrops->setcolor("default");
+    cout<<">";
+    
+    getline(cin,input_string);
+    if (0 == input_string.size())
+      continue;
+
+    cmd_vec  = string2word(input_string);
+    cur_cmd = cmd_vec[0];
+
+    if ( 0 == cmd_vec.size()){                   // input nothing
+      continue;
+    }
+
+    if (!cur_cmd.compare("!quit")){             // input "!quit"
+      this->save();
+      return true;
+    }
+    
+    if (!cur_cmd.compare("!help"))              // input "!help"
+      this->show_help_message();
+
+    if (this->cmdset.count(cmd_vec[0]) == 1){    // input correct command
+      run_command(cur_cmd);
+      //cout<<"##command:"<<cmd_vec[0]<<" (right)"<<endl;
+    }else{                                      // input wrong command
+
+      pstrops->setcolor("error");
+      cout<<"No command '"<<cur_cmd<<"' found!"<<endl;
+      pstrops->setcolor();
+
+      this->show_help_message();
+      cout<<"##command:"<<cmd_vec[0]<<" (wrong)"<<endl;
+    }
+  }
+
+  return true;
+}
+
+bool command::run_command(string cmd)
+{ /***
+      this func. act as excute a specific command
+      use data: jlist, cmd_vec, cmd
+  */
+
+  if (!cmd.compare("ls"))
+    return jlist.ls(jlist.cur);
+  
+  if (!cmd.compare("cd") && 1 == cmd_vec.size())
+    jlist.cur = jlist.cd(jlist.cur);
+
+  if (!cmd.compare("cd") && 2 == cmd_vec.size())
+    jlist.cur = jlist.cd(jlist.cur, cmd_vec[1]);
+
+  if (!cmd.compare("cd") && cmd_vec.size() > 2)
+    return false;
+  
+  if (!cmd.compare("cat") && 2 == cmd_vec.size())
+    return jlist.cat(jlist.cur, cmd_vec[1]);
+  
+  if (!cmd.compare("add") && 2 == cmd_vec.size())
+    return jlist.add(jlist.cur, cmd_vec[1]);
+  
+  if (!cmd.compare("remove") && 2 == cmd_vec.size())
+    return jlist.remove(jlist.cur, cmd_vec[1]);
+
+  if (!cmd.compare("#debug") && 2 == cmd_vec.size())
+    return jlist.debug(jlist.cur, cmd_vec[1]);
+
+  return true;
+}
+
+bool command::save()
+{
+  cout<<"the file has been saved!"<<endl;
+  return true;
+}
+
+void command::show_help_message()
+{
+  cout<<"---------------------------------------------"<<endl;
+  cout<<"    !help  --- shows this help message!"<<endl;
+  cout<<"---------------------------------------------"<<endl;
+  cout<<"only follow cmmand can be used:"<<endl;
+  cout<<"---------------------------------------------"<<endl;
+  cout<<"    ls     --- list the current objects!"<<endl;
+  cout<<"    cd     --- change dir"<<endl;
+  cout<<"    cat    --- check the items"<<endl;
+  cout<<"    remove --- remove an items"<<endl;
+  cout<<"    add    --- add an intems"<<endl;
+  cout<<"    !quit  --- quit this program.."<<endl;
+  cout<<"---------------------------------------------"<<endl;
+  return;
+}
+
+vector< string > command::string2word(string const str)  
+{  
+  int start = 0;  
+  int count = 0;  
+  int i     = 0;
+  vector< string > eachline;  
+
+  if (0 == str.size()){
+    return eachline;
+  }
+
+  while (isspace(str[i])) { i++; }
+  string s(str.substr(i, str.size() - i));
+  // s make sure the first char is non-null
+
+  for (int j = 0; j < s.size(); ++j)     
+  {  
+    if (isspace(s[j]) && count > 0){
+      string tmp(s.substr(start, count));
+      eachline.push_back(tmp);
+      count = 0;
+    }else if (!isspace(s[j]) && count == 0){
+      start = j;
+      count ++;
+    }else if (!isspace(s[j]) && count > 0){
+      count ++;
+    }
+    
+    if ( (s.size() - 1) == j && count > 0){
+      string tmp(s.substr(start, count));
+      eachline.push_back(tmp);
+    }
+  }
+
+  return eachline;  
+}  

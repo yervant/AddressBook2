@@ -1,0 +1,16 @@
+This project finished by Guobao Jiang (guobaojiang@foxmail.com)
+There are include follow classes, each class has two files:
+classname.cpp and classname.hxx
+
+--------------------------
+000  the main files intro.
+
+main         ---- the main procedure
+JSONNode     ---- the JSON struct node
+JSONList     ---- the JSON Linked list, like a tree directory.
+command      ---- interactive to users
+helpmessage  ---- the help message, can check the usage of each command
+strops       ---- string operation class, which is used to deal with string
+
+---------------------------
+001 about install
